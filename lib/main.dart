@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +32,7 @@ class MyApp extends StatelessWidget {
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
   var favourites = <WordPair>[];
+  var history = <Map<String, dynamic>>[];
 
   void toggleFavourite() {
     if (favourites.contains(current)) {
@@ -42,6 +45,7 @@ class MyAppState extends ChangeNotifier {
   }
 
   void getNext() {
+    history.add({"word": current, "favourite": favourites.contains(current)});
     current = WordPair.random();
     notifyListeners(); // ChangeNotifier method
   }
@@ -137,10 +141,20 @@ class GeneratorPage extends StatelessWidget {
       icon = Icons.favorite_border;
     }
 
+    var history = <Map<String, dynamic>>[];
+    var historyLength = appState.history.length;
+    if (historyLength > 4) {
+      history = appState.history.sublist((historyLength - 4), historyLength);
+    } else {
+      history = appState.history.sublist(0, historyLength);
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          ...history.map((h) => SmallCard(
+              word: (h["word"]).asLowerCase, favourite: h["favourite"])),
           BigCard(pair: pair),
           SizedBox(height: 10),
           Row(
@@ -165,6 +179,19 @@ class GeneratorPage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class SmallCard extends StatelessWidget {
+  const SmallCard({required this.word, required this.favourite});
+
+  final String word;
+  final bool favourite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+        child: Padding(padding: const EdgeInsets.all(10.0), child: Text(word)));
   }
 }
 
