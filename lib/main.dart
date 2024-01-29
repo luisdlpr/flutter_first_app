@@ -1,4 +1,5 @@
 import 'dart:ffi';
+// import 'dart:html';
 
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,8 @@ class MyAppState extends ChangeNotifier {
   var favourites = <WordPair>[];
   var history = <Map<String, dynamic>>[];
 
+  GlobalKey? historyListKey;
+
   void toggleFavourite() {
     if (favourites.contains(current)) {
       favourites.remove(current);
@@ -45,7 +48,10 @@ class MyAppState extends ChangeNotifier {
   }
 
   void getNext() {
-    history.add({"word": current, "favourite": favourites.contains(current)});
+    history.insert(
+        0, {"word": current, "favourite": favourites.contains(current)});
+    var animatedList = historyListKey?.currentState as AnimatedListState;
+    animatedList.insertItem(0);
     current = WordPair.random();
     notifyListeners(); // ChangeNotifier method
   }
@@ -141,20 +147,15 @@ class GeneratorPage extends StatelessWidget {
       icon = Icons.favorite_border;
     }
 
-    var history = <Map<String, dynamic>>[];
-    var historyLength = appState.history.length;
-    if (historyLength > 4) {
-      history = appState.history.sublist((historyLength - 4), historyLength);
-    } else {
-      history = appState.history.sublist(0, historyLength);
-    }
-
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ...history.map((h) => SmallCard(
-              word: (h["word"]).asLowerCase, favourite: h["favourite"])),
+          Expanded(
+            flex: 3,
+            child: PairHistory(),
+          ),
+          SizedBox(height: 10),
           BigCard(pair: pair),
           SizedBox(height: 10),
           Row(
@@ -176,22 +177,55 @@ class GeneratorPage extends StatelessWidget {
               ),
             ],
           ),
+          Spacer(flex: 2),
         ],
       ),
     );
   }
 }
 
-class SmallCard extends StatelessWidget {
-  const SmallCard({required this.word, required this.favourite});
+class PairHistory extends StatefulWidget {
+  const PairHistory({Key? key}) : super(key: key);
+
+  @override
+  State<PairHistory> createState() => _PairHistoryState();
+}
+
+class _PairHistoryState extends State<PairHistory> {
+  final _key = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<MyAppState>();
+    appState.historyListKey = _key;
+
+    return AnimatedList(
+      key: _key,
+      reverse: true,
+      padding: EdgeInsets.only(top: 100),
+      initialItemCount: appState.history.length,
+      itemBuilder: (context, index, animation) {
+        final pair = appState.history[index];
+        return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          (appState.favourites.contains(pair["word"]))
+              ? Icon(Icons.favorite)
+              : Container(),
+          Text(pair["word"].asLowerCase)
+        ]);
+      },
+    );
+  }
+}
+
+class PairHistoryRow extends StatelessWidget {
+  const PairHistoryRow({required this.word, required this.favourite});
 
   final String word;
   final bool favourite;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-        child: Padding(padding: const EdgeInsets.all(10.0), child: Text(word)));
+    return Padding(padding: const EdgeInsets.all(10.0), child: Text(word));
   }
 }
 
